@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdn.bootcss.com/jquery/2.1.2/jquery.min.js"></script>  
+    <title>waterfall-sinanews</title>
+</head>
+<style>
+    * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+    }
+    a {
+        text-decoration: none;
+    }
+    ul li {
+        list-style: none;
+    }
+    .container {
+        position: relative;
+        width: 900px;
+        margin: 0 auto;
+        
+    }
+    .container .pic-ct .item {
+        position: absolute;
+        float: left;
+        margin: 10px;
+        padding: 10px;
+        width: 280px;
+        border: 1px solid #ddd;
+    }
+    .container .pic-ct::after {
+        content: '';
+        display: block;
+        clear: both;
+    }
+    .container .pic-ct .item img {
+        width: 260px;
+    }
+    .container .pic-ct .item h4 {
+        color: #333;
+        padding-bottom: 2px;
+        border-bottom: 1px solid #ddd;
+    }
+    .container .pic-ct .item p {
+        margin: 10px 0 0 0;
+        font-size: 12px;
+        color: #666;
+       line-height: 1.8;
+    }
+    .container .hide {
+        display: none;
+    }
+    .container #load {
+        opacity: 0;
+    }
+</style>
+<body>
+    <div class="container">
+        <ul class="pic-ct">
+              <!-- <li class="item">
+                <a href="#">
+                    <img src="http://n.sinaimg.cn/top/transform/w600h400/20180308/JIxV-fxpwyhv7523283.jpg" alt="">
+                </a>
+                <h4>国内首次引进雪鸮抵达成都</h4>
+                <p>14只巴布亚企鹅和4只雪鸮搭乘国泰航空CX3260航班由香港抵达成都。</p>
+            </li>  -->
+            <!-- <li class="item">
+                <a href="#">
+                    <img src="http://n.sinaimg.cn/top/transform/w600h400/20180308/JIxV-fxpwyhv7523283.jpg" alt="">
+                </a>
+                <h4>国内首次引进雪鸮抵达成都</h4>
+                <p>14只巴布亚企鹅和4只雪鸮搭乘国泰航空CX3260航班由香港抵达成都。</p>
+            </li>
+            <li class="item">
+                <a href="#">
+                    <img src="http://n.sinaimg.cn/top/transform/w600h400/20180308/JIxV-fxpwyhv7523283.jpg" alt="">
+                </a>
+                <h4>国内首次引进雪鸮抵达成都</h4>
+                <p>14只巴布亚企鹅和4只雪鸮搭乘国泰航空CX3260航班由香港抵达成都。</p>
+            </li>  -->
+            <li class="item hide"></li>
+        </ul>
+        <div id="load">我是看不见的</div>
+    </div>
+    <script>
+     var app = {
+        init:function(){
+            this.curPage = 1
+            this.perPageCount = 10
+            this.$window = $(window)
+            this.$container = $('.container')
+            this.itemWidth = $('.pic-ct .item').outerWidth(true) 
+            this.imgNum = Math.floor(this.$container.width() / this.itemWidth)
+            this.imgHeightArray = []
+            this.isDataArrive = true
+            this.timer = null
+            this.initArray()
+            this.bind()
+            this.start()
+        },
+        initArray:function(){
+            for(let i=0;i < this.imgNum;i++){
+            this.imgHeightArray[i] = 0
+            }
+        },
+        bind:function(){
+            var _this = this
+            _this.$window.on('scroll',function(){
+                if(!_this.isDataArrive) return
+                if(_this.isShow($('#load'))){
+                    _this.start()
+                }
+            })
+        },
+        start:function(){
+            var _this = this
+            this.getData(function(list){
+                _this.isDataArrive = true
+                $.each(list,function(idx,item){
+                    var $node = _this.creatNode(item)
+                    $node.find('img').on('load',function(){
+                        $('.pic-ct').append($node)
+                        _this.waterFall($node)
+                    })
+                })
+            })
+            _this.isDataArrive = false
+        },
+        getData:function(callback){
+            var _this = this
+            $.ajax({
+                url:'http://platform.sina.com.cn/slide/album_tech',
+                dataType:'jsonp',
+                jsonp:"jsoncallback",
+            data: {
+                app_key: '1271687855',
+                num: _this.perPageCount,
+                page: _this.curPage
+            }
+            }).done(function(ret){
+                if(ret && ret.status && ret.status.code === "0"){
+                callback&&callback(ret.data);
+                _this.curPage++
+            }else{
+                console.log('数据异常');
+            }
+            })         
+        },
+        creatNode:function(data){
+            var tpl = ` <li class="item">
+                <a href="">
+                    <img src="" alt="">
+                </a>
+                <h4></h4>
+                <p></p>
+            </li> `
+            var $tpl = $(tpl)
+            $tpl.find('a').attr('href',data.url)
+            $tpl.find('img').attr('src',data.img_url)
+            $tpl.find('h4').text(data.short_name)
+            $tpl.find('p').text(data.short_intro)
+            return $tpl
+        },
+        waterFall:function($node){
+            var _this = this
+            var minHeight = _this.imgHeightArray[0]
+            // console.log(_this.imgHeightArray[0])
+            var index = 0
+            for(var i=0;i<_this.imgHeightArray.length;i++){
+                if(minHeight > _this.imgHeightArray[i]){
+                    minHeight = _this.imgHeightArray[i]
+                    index = i
+                }
+            }
+            $node.css({
+                top:minHeight,
+                left:index * _this.itemWidth
+            })
+            _this.imgHeightArray[index] += $node.outerHeight(true)
+            $('.pic-ct').height(Math.max.apply(null,_this.imgHeightArray));
+            },
+        isShow:function($el){
+            return this.$window.height() + this.$window.scrollTop() >= $el.offset().top       
+        },
+    }
+    app.init()
+
+
+
+
+
+
+
+     /*
+        var curPage = 1
+        var perPageCount = 10
+        var imgNum
+        var imgHeightArray = []
+        var itemWidth = $('.pic-ct .item').outerWidth(true)
+        imgNum = Math.floor($('.container').width()/itemWidth)
+        for(var i=0;i<imgNum;i++){
+            imgHeightArray[i] = 0
+        }
+        var isDataArrive = true
+        // console.log(imgNum)
+        // console.log(imgHeightArray)
+        start()
+        $(window).on('scroll',function(){
+            if(!isDataArrive) return
+            if(isShow($('#load'))){
+                start()
+            }
+        })
+        function start(){
+            getData(function(list){
+                isDataArrive = true
+                console.log(list)
+                $.each(list,function(idx,item){
+                    // console.log(item)
+                    var $node = creatNode(item)
+                    // console.log($node)
+                    $node.find('img').on('load',function(){
+                        $('.pic-ct').append($node)
+                        waterFall($node)
+                    })
+                })
+            })
+            isDataArrive = false
+        }
+        function getData(callback){
+            $.ajax({
+                url:'http://platform.sina.com.cn/slide/album_tech',
+                dataType:'jsonp',
+                jsonp:"jsoncallback",
+			data: {
+				app_key: '1271687855',
+				num: perPageCount,
+				page: curPage
+			}
+            }).done(function(ret){
+                // console.log(ret)
+                if(ret && ret.status && ret.status.code === "0"){
+				callback&&callback(ret.data);
+				curPage++
+			}else{
+				console.log('数据异常');
+			}
+            })
+        }
+        function creatNode(data){
+            var tpl = ` <li class="item">
+                <a href="">
+                    <img src="" alt="">
+                </a>
+                <h4></h4>
+                <p></p>
+            </li> `
+             var $tpl = $(tpl)
+             $tpl.find('a').attr('href',data.url)
+             $tpl.find('img').attr('src',data.img_url)
+             $tpl.find('h4').text(data.short_name)
+             $tpl.find('p').text(data.short_intro)
+             return $tpl
+        }
+        function waterFall($node){
+            var minHeight = imgHeightArray[0]
+            var index = 0
+            for(var i=0;i<imgHeightArray.length;i++){
+                if(minHeight > imgHeightArray[i]){
+                    minHeight = imgHeightArray[i]
+                    index = i
+                }
+            }
+            $node.css({
+                top:minHeight,
+                left:index * itemWidth
+            })
+            imgHeightArray[index] += $node.outerHeight(true)
+            $('.pic-ct').height(Math.max.apply(null,imgHeightArray));
+        }
+
+        function isShow($el){
+            return $(window).height() + $(window).scrollTop() >= $el.offset().top
+        }
+        */
+
+    </script>
+</body>
+</html>
